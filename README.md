@@ -1,5 +1,10 @@
 # In-flight deb packages of Go
 
+Notice
+------
+
+This is a fixed up version of godeb from [niemeyer/godeb](https://github.com/niemeyer/godeb) containing all necessary PRs from the original repository to produce a working version of godeb that produces non-broken debian packages also when compiled with modern go versions.
+
 Introduction
 ------------
 
@@ -12,15 +17,20 @@ please refer to the following blog post:
 Installation and usage
 ----------------------
 
-If you already have a Go toolset avaliable, run:
+If you want to compile it yourself you currently need to check out the repository in your GOPATH under github.com/niemeyer/godeb and then execute
 
-    go get gopkg.in/niemeyer/godeb.v1/cmd/godeb
+    CGO_ENABLED=0 go build -tags netgo
 
-Otherwise, there are pre-built binaries available for the
-[amd64](https://godeb.s3.amazonaws.com/godeb-amd64.tar.gz) and
-[386](https://godeb.s3.amazonaws.com/godeb-386.tar.gz).
-architectures
+Otherwise, there are pre-built binaries available for all architectures currently supported by go, the generic URL is `https://storage.googleapis.com/godeb/godeb-$GOARCH$GOARM.tar.gz`, there is also a signature for every released file ending in `.asc`.
 
+  * [amd64](https://storage.googleapis.com/godeb/godeb-amd64.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-amd64.tar.gz.asc))
+  * [386](https://storage.googleapis.com/godeb/godeb-386.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-386.tar.gz.asc))
+  * [arm GOARCH=5](https://storage.googleapis.com/godeb/godeb-arm5.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-arm5.tar.gz.asc))
+  * [arm GOARCH=6](https://storage.googleapis.com/godeb/godeb-arm6.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-arm6.tar.gz.asc))
+  * [arm GOARCH=7](https://storage.googleapis.com/godeb/godeb-arm7.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-arm7.tar.gz.asc))
+  * [arm64](https://storage.googleapis.com/godeb/godeb-arm64.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-arm64.tar.gz.asc))
+  * [ppc64le](https://storage.googleapis.com/godeb/godeb-ppc64le.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-ppc64le.tar.gz.asc))
+  * [s390x](https://storage.googleapis.com/godeb/godeb-s390x.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-s390x.tar.gz.asc))
 
 License
 -------
