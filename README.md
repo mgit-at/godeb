@@ -32,6 +32,18 @@ Otherwise, there are pre-built binaries available for all architectures currentl
   * [ppc64le](https://storage.googleapis.com/godeb/godeb-ppc64le.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-ppc64le.tar.gz.asc))
   * [s390x](https://storage.googleapis.com/godeb/godeb-s390x.tar.gz) ([sign](https://storage.googleapis.com/godeb/godeb-s390x.tar.gz.asc))
 
+Create a release
+----------------
+
+Notes how we create a release
+
+```
+./build.sh
+for i in *.tar.gz; do gpg2 --sign --detach-sign -u mgebetsroither@mgit.at --armor $i; done
+for i in *.asc; do gpg $i; done
+gsutil -m cp godeb-* gs://godeb
+```
+
 License
 -------
 
