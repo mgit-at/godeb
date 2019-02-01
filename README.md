@@ -41,6 +41,8 @@ Notes how we create a release
 ./build.sh
 for i in *.tar.gz; do gpg2 --sign --detach-sign -u mgebetsroither@mgit.at --armor $i; done
 for i in *.asc; do gpg $i; done
+gsutil -m cp godeb-* gs://godeb/stage
+<test>
 gsutil -m cp godeb-* gs://godeb
 ```
 
