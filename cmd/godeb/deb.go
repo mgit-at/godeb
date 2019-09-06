@@ -4,7 +4,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"crypto/md5"
 	"fmt"
 	"go/build"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/blakesmith/ar"
+	gzip "github.com/klauspost/pgzip"
 	"github.com/niemeyer/godeb/archive/tar"
 )
 
