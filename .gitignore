@@ -1,0 +1,5 @@
+/go_*.deb
+/godeb
+/cmd/godeb/godeb
+/godeb-*.tar.gz
+/godeb-*.tar.gz.asc
