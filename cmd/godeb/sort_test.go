@@ -3,22 +3,14 @@
 package main
 
 import (
-	. "launchpad.net/gocheck"
 	"math/rand"
 	"sort"
 	"testing"
-	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func Test(t *testing.T) {
-	TestingT(t)
-}
-
-type S struct{}
-
-var _ = Suite(S{})
-
-func (S) TestVersionOrder(c *C) {
+func TestVersionOrder(t *testing.T) {
 	//rand.Seed(time.Now().UnixNano())
 	versions := []string{
 		"1.2",
@@ -51,6 +43,6 @@ func (S) TestVersionOrder(c *C) {
 		for i := range versions {
 			vs[i] = ts[i].Version
 		}
-		c.Assert(vs, DeepEquals, versions)
+		assert.Equal(t, vs, versions)
 	}
 }

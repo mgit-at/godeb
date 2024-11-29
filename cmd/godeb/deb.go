@@ -3,6 +3,7 @@
 package main
 
 import (
+	"archive/tar"
 	"bytes"
 	"crypto/md5"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/blakesmith/ar"
 	gzip "github.com/klauspost/pgzip"
-	"github.com/niemeyer/godeb/archive/tar"
 )
 
 func createDeb(version string, tarball io.Reader, deb io.Writer) error {
@@ -56,7 +56,7 @@ Replaces: golang-go
 Provides: golang-go
 Section: devel
 Priority: extra
-Homepage: http://golang.org
+Homepage: https://go.dev
 Description: Go language compiler and tools (gc)
  The Go programming language is an open source project to make programmers
  more productive. Go is expressive, concise, clean, and efficient.
@@ -69,6 +69,13 @@ Description: Go language compiler and tools (gc)
 `
 
 func debArch() string {
+	cmd := exec.Command("dpkg", "--print-architecture")
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return strings.TrimSpace(string(output))
+	}
+
+	//if unable to get the dpkg arch using dpkg command, fallback to GOARCH
 	arch := build.Default.GOARCH
 	if arch == "386" {
 		return "i386"
@@ -195,6 +202,8 @@ func addArFile(now time.Time, w *ar.Writer, name string, body []byte) error {
 	return err
 }
 
+var processTarHeader = func(h *tar.Header) {}
+
 func translateTarball(now time.Time, tarball io.Reader) (dataTarGz, md5sums []byte, instSize int64, err error) {
 	buf := &bytes.Buffer{}
 	compress := gzip.NewWriter(buf)
@@ -217,8 +226,8 @@ func translateTarball(now time.Time, tarball io.Reader) (dataTarGz, md5sums []by
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("cannot read upstream tarball: %v", err)
 		}
-		h.Format = tar.FormatGNU
-		h.PAXRecords = nil
+		processTarHeader(h)
+
 		instSize += h.Size
 		h.Name = strings.TrimLeft(h.Name, "./")
 		if first && h.Name != "go" && h.Name != "go/" {

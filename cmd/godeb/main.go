@@ -5,8 +5,7 @@
 // For details of how this tool works and context for why it was built,
 // please refer to the following blog post:
 //
-//   http://blog.labix.org/2013/06/15/in-flight-deb-packages-of-go
-//
+//	http://blog.labix.org/2013/06/15/in-flight-deb-packages-of-go
 package main
 
 import (
@@ -18,87 +17,103 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
-var usage = `Usage: godeb <command> [<options> ...]
-
-Available commands:
-
-    list
-    install [<version>]
-    download [<version>]
-    remove
-`
+var (
+	GOARCH = build.Default.GOARCH
+	GOOS   = build.Default.GOOS
+)
 
 func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+	if GOARCH == "arm" {
+		GOARCH = "armv6l"
 	}
+
+	listCmd.Flags().BoolVarP(&includeAll, "all", "a", false, "Include all versions")
+
+	rootCmd.AddCommand(listCmd, downloadCmd, installCmd, removeCmd)
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	rootCmd.Execute()
 }
 
-func run() error {
-	if len(os.Args) == 2 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
-		fmt.Println(usage)
+var rootCmd = &cobra.Command{
+	Use:   "godeb",
+	Short: "godeb dynamically translates stock upstream Go tarballs to deb packages",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return cmd.Help()
+	},
+
+	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+}
+
+var includeAll bool
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List available Go versions",
+	Args:  cobra.NoArgs,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		tbs, err := tarballs(includeAll)
+		if err != nil {
+			return err
+		}
+		for _, tb := range tbs {
+			fmt.Println(tb.Version)
+		}
 		return nil
-	}
-	if len(os.Args) < 2 {
-		fmt.Println(usage)
-		return fmt.Errorf("command missing")
-	}
-	if strings.HasPrefix(os.Args[1], "-") {
-		return fmt.Errorf("unknown option: %s", os.Args[1])
-	}
+	},
+}
 
-	switch command := os.Args[1]; command {
-	case "list":
-		if len(os.Args) > 2 {
-			return fmt.Errorf("list command takes no arguments")
+var removeCmd = &cobra.Command{
+	Use:   "remove",
+	Short: "Remove the installed Go package",
+	Args:  cobra.NoArgs,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		args := []string{"dpkg", "--purge", "go"}
+		if os.Getuid() != 0 {
+			args = append([]string{"sudo"}, args...)
 		}
-		return listCommand()
-	case "download", "install":
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("while removing go package: %w", err)
+		}
+		return nil
+	},
+}
+
+var downloadCmd = &cobra.Command{
+	Use:   "download [version]",
+	Short: "Download the Go package and transform it into a deb package",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
 		version := ""
-		if len(os.Args) == 3 {
-			version = os.Args[2]
-		} else if len(os.Args) > 3 {
-			return fmt.Errorf("too many arguments to %s command", command)
+		if len(args) == 1 {
+			version = args[0]
 		}
-		return actionCommand(version, command == "install")
-	case "remove":
-		return removeCommand()
-	default:
-		return fmt.Errorf("unknown command: %s", os.Args[1])
-	}
-	return nil
+		return actionCommand(version, false)
+	},
 }
 
-func listCommand() error {
-	tbs, err := tarballs()
-	if err != nil {
-		return err
-	}
-	for _, tb := range tbs {
-		fmt.Println(tb.Version)
-	}
-	return nil
-}
-
-func removeCommand() error {
-	args := []string{"dpkg", "--purge", "go"}
-	if os.Getuid() != 0 {
-		args = append([]string{"sudo"}, args...)
-	}
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("while removing go package: %v", err)
-	}
-	return nil
+var installCmd = &cobra.Command{
+	Use:   "install [version]",
+	Short: "Download the Go package, transform it into a deb package, and install it",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		version := ""
+		if len(args) == 1 {
+			version = args[0]
+		}
+		return actionCommand(version, true)
+	},
 }
 
 func actionCommand(version string, install bool) error {
-	tbs, err := tarballs()
+	tbs, err := tarballs(true)
 	if err != nil {
 		return err
 	}
@@ -182,8 +197,11 @@ type GolangDlVersion struct {
 }
 
 // REST API described in https://github.com/golang/website/blob/master/internal/dl/dl.go
-func tarballs() ([]*Tarball, error) {
-	url := "https://golang.org/dl/?mode=json&include=all"
+func tarballs(includeAll bool) ([]*Tarball, error) {
+	url := "https://go.dev/dl/?mode=json"
+	if includeAll {
+		url += "&include=all"
+	}
 	downloadBaseURL := "https://dl.google.com/go/"
 
 	resp, err := http.Get(url)
@@ -200,16 +218,16 @@ func tarballs() ([]*Tarball, error) {
 	var tbs []*Tarball
 	for _, v := range versions {
 		for _, f := range v.Files {
-			if f.Os == build.Default.GOOS && f.Arch == build.Default.GOARCH {
-				t := Tarball{
+			if f.Os == GOOS && f.Arch == GOARCH {
+				tbs = append(tbs, &Tarball{
 					Version: strings.TrimPrefix(f.Version, "go"),
-					URL:     downloadBaseURL + f.Filename}
-				tbs = append(tbs, &t)
+					URL:     downloadBaseURL + f.Filename,
+				})
 				break
 			}
 		}
 	}
 
-	sort.Sort(sort.Reverse(tarballSlice(tbs)))
+	sort.Sort(tarballSlice(tbs))
 	return tbs, nil
 }
